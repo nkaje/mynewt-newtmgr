@@ -34,6 +34,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
 	"mynewt.apache.org/newtmgr/nmxact/omp"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
+    rt "runtime/debug"
 )
 
 type TxFn func(req []byte) error
@@ -133,17 +134,24 @@ func (t *Transceiver) txRxOmp(txCb TxFn, req *nmp.NmpMsg, mtu int,
 		return nil, err
 	}
 
+	log.Debugf("transceiver t.isTcp %t proto %d, duration %d", t.isTcp, t.proto, timeout)
+	log.Debugf("MTU %d len %d", mtu, len(b))
 	log.Debugf("Tx OMP request: %s", hex.Dump(b))
 
 	if t.isTcp == false && len(b) > mtu {
 		return nil, fmt.Errorf("Request too big")
 	}
 	frags := nmxutil.Fragment(b, mtu)
+    //rt.PrintStack()
+	log.Debugf("frags len %d", len(frags))
 	for _, frag := range frags {
 		if err := txCb(frag); err != nil {
 			return nil, err
-		}
+		} else {
+			log.Debugf("txCb fag")
+        }
 	}
+    log.Debugf("txCb done")
 
 	// Now wait for NMP response.
 	for {
@@ -211,6 +219,7 @@ func (t *Transceiver) DispatchNmpRsp(data []byte) {
 		t.nd.Dispatch(data)
 	} else {
 		log.Debugf("rx omp response: %s", hex.Dump(data))
+        rt.PrintStack()
 		t.od.Dispatch(data)
 	}
 }

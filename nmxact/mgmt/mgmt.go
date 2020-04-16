@@ -25,6 +25,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmp"
 	"mynewt.apache.org/newtmgr/nmxact/omp"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
+	log "github.com/sirupsen/logrus"
 )
 
 func EncodeMgmt(s sesn.Sesn, m *nmp.NmpMsg) ([]byte, error) {
@@ -35,8 +36,10 @@ func EncodeMgmt(s sesn.Sesn, m *nmp.NmpMsg) ([]byte, error) {
 	case sesn.MGMT_PROTO_OMP:
 		txCb, _ := s.Filters()
 		if s.CoapIsTcp() == true {
+            log.Debugf("EncodeOmpTcp")
 			return omp.EncodeOmpTcp(txCb, m)
 		} else {
+            log.Debugf("EncodeOmpDgram")
 			return omp.EncodeOmpDgram(txCb, m)
 		}
 

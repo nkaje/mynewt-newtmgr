@@ -29,6 +29,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmp"
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
+	log "github.com/sirupsen/logrus"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -185,10 +186,11 @@ func nextImageUploadReq(s sesn.Sesn, upgrade bool, data []byte, off int, imageNu
 	return r, nil
 }
 
-func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
-	res := newImageUploadResult()
+    func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
+        res := newImageUploadResult()
 
 	for off := c.StartOff; off < len(c.Data); {
+        log.Debugf("ImageUploadCmd Run - offset %d, len %d", off, len(c.Data))        
 		r, err := nextImageUploadReq(s, c.Upgrade, c.Data, off, c.ImageNum)
 		if err != nil {
 			return nil, err

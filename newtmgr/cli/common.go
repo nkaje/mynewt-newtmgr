@@ -88,7 +88,7 @@ func initConnProfile() error {
 		return util.FmtNewtError("No connection type specified")
 	}
 
-	log.Debugf("Using connection profile: %v", p)
+	log.Debugf("Debugging...Using connection profile: %v", p)
 	globalP = p
 
 	return nil

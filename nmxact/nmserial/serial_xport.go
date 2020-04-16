@@ -36,6 +36,7 @@ import (
 
 	"mynewt.apache.org/newt/util"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
+    rt "runtime/debug"
 )
 
 type XportCfg struct {
@@ -237,8 +238,8 @@ func (sx *SerialXport) Stop() error {
 }
 
 func (sx *SerialXport) txRaw(bytes []byte) error {
-	log.Debugf("Tx serial\n%s", hex.Dump(bytes))
-
+	log.Debugf("Tx serial len %d\n%s", len(bytes), hex.Dump(bytes))
+    rt.PrintStack()
 	_, err := sx.port.Write(bytes)
 	if err != nil {
 		return err
@@ -311,7 +312,9 @@ func (sx *SerialXport) Rx() ([]byte, error) {
 				break
 			}
 		}
+
 		log.Debugf("Rx serial:\n%s", hex.Dump(line))
+        rt.PrintStack()
 		if len(line) < 2 || ((line[0] != 4 || line[1] != 20) &&
 			(line[0] != 6 || line[1] != 9)) {
 			continue

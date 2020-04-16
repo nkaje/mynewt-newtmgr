@@ -40,6 +40,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmp"
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
+    rt "runtime/debug"
 )
 
 // A session that uses the host machine's native BLE support.
@@ -160,7 +161,10 @@ func (s *BllSesn) txWriteCharacteristic(
 	if err != nil {
 		return err
 	}
-	return cln.WriteCharacteristic(c, b, noRsp)
+    // This returns an error status
+	ret := cln.WriteCharacteristic(c, b, noRsp)
+    log.Debugf("WriteCharacteristic returned %v", ret)
+    return ret
 }
 
 func (s *BllSesn) connect() error {
@@ -386,9 +390,13 @@ func (s *BllSesn) TxRxMgmt(m *nmp.NmpMsg,
 	}
 
 	txRaw := func(b []byte) error {
+        log.Debugf("TxRxMgmt txWriteCharacteristic bytes %d", len(b))
+        rt.PrintStack()
 		return s.txWriteCharacteristic(s.nmpReqChr, b, true)
 	}
 
+    //rt.PrintStack()
+    log.Debugf("sending via TxRxMgmt %d timeout", timeout)
 	return s.txvr.TxRxMgmt(txRaw, m, s.MtuOut(), timeout)
 }
 
