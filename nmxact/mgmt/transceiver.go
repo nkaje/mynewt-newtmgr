@@ -34,7 +34,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
 	"mynewt.apache.org/newtmgr/nmxact/omp"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
-    rt "runtime/debug"
+    //rt "runtime/debug"
 )
 
 type TxFn func(req []byte) error
@@ -219,7 +219,7 @@ func (t *Transceiver) DispatchNmpRsp(data []byte) {
 		t.nd.Dispatch(data)
 	} else {
 		log.Debugf("rx omp response: %s", hex.Dump(data))
-        rt.PrintStack()
+        //rt.PrintStack()
 		t.od.Dispatch(data)
 	}
 }

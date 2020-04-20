@@ -169,6 +169,7 @@ func nextImageUploadReq(s sesn.Sesn, upgrade bool, data []byte, off int, imageNu
 			s.MtuOut())
 	}
 
+    log.Debugf("Chunklen %d, range %d to %d", chunklen, off, off+chunklen)
 	r := buildImageUploadReq(len(data), hash, upgrade,
 		data[off:off+chunklen], off, imageNum, seq)
 
@@ -186,32 +187,52 @@ func nextImageUploadReq(s sesn.Sesn, upgrade bool, data []byte, off int, imageNu
 	return r, nil
 }
 
-    func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
+
+func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
         res := newImageUploadResult()
+    rsp_c := make(chan nmp.NmpRsp)
+    err_c := make(chan error, 1)
+
 
 	for off := c.StartOff; off < len(c.Data); {
-        log.Debugf("ImageUploadCmd Run - offset %d, len %d", off, len(c.Data))        
 		r, err := nextImageUploadReq(s, c.Upgrade, c.Data, off, c.ImageNum)
 		if err != nil {
 			return nil, err
 		}
+        log.Debugf("ImageUploadCmd Run - offset %d, len %d, r.Off %d", off, len(r.Data), r.Off)
+        go func() {
+            defer close(rsp_c)
+            defer close(err_c)
+            rsp, err := txReq(s, r.Msg(), &c.CmdBase)
+            /* check for tx errors */
+            if err != nil {
+                err_c <- err
+                return
+            }
 
-		rsp, err := txReq(s, r.Msg(), &c.CmdBase)
-		if err != nil {
-			return nil, err
-		}
-		irsp := rsp.(*nmp.ImageUploadRsp)
+            irsp := rsp.(*nmp.ImageUploadRsp)
+            res.Rsps = append(res.Rsps, irsp)
+				log.Debugf("resp returned (next) offset %d", off)
+            /* check for response errors */
+            if err != nil {
+                err_c <- err
+                return
+            }
+            if c.ProgressCb != nil {
+                c.ProgressCb(c, irsp)
+            }
+        }()
 
-		off = int(irsp.Off)
+        //increment offset to previous + size of last
+		off = (int(r.Off) + len(r.Data))
 
-		if c.ProgressCb != nil {
-			c.ProgressCb(c, irsp)
-		}
-
-		res.Rsps = append(res.Rsps, irsp)
-		if irsp.Rc != 0 {
-			break
-		}
+        select {
+        case e := <- err_c:
+            log.Debugf("Received error %v", e)
+            break
+        default:
+            log.Debugf("no error")
+        }
 	}
 
 	return res, nil
