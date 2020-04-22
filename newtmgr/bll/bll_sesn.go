@@ -40,7 +40,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmp"
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
-//    rt "runtime/debug"
+    rt "runtime/debug"
 )
 
 // A session that uses the host machine's native BLE support.
@@ -149,6 +149,7 @@ func (s *BllSesn) txCancelConnection() error {
 	if err != nil {
 		return err
 	}
+    rt.PrintStack()
 	return cln.CancelConnection()
 }
 
@@ -335,7 +336,7 @@ func (s *BllSesn) Close() error {
 	if err := s.txCancelConnection(); err != nil {
 		return err
 	}
-
+    rt.PrintStack()
 	s.setCln(nil)
 	return nil
 }

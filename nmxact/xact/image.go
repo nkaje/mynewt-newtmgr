@@ -30,6 +30,9 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
 	log "github.com/sirupsen/logrus"
+    "container/list"
+    "sync"
+    rt "runtime/debug"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -190,8 +193,14 @@ func nextImageUploadReq(s sesn.Sesn, upgrade bool, data []byte, off int, imageNu
 
 func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
         res := newImageUploadResult()
-    rsp_c := make(chan nmp.NmpRsp)
+    rsp_c := make(chan nmp.NmpRsp, 1)
     err_c := make(chan error, 1)
+    defer close(rsp_c)
+    defer close(err_c)
+    sem := make(chan int, 1)
+    queue := list.New()
+    var mutex = &sync.Mutex{}
+    var assert interface{}
 
 
 	for off := c.StartOff; off < len(c.Data); {
@@ -199,40 +208,63 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
 		if err != nil {
 			return nil, err
 		}
-        log.Debugf("ImageUploadCmd Run - offset %d, len %d, r.Off %d", off, len(r.Data), r.Off)
-        go func() {
-            defer close(rsp_c)
-            defer close(err_c)
-            rsp, err := txReq(s, r.Msg(), &c.CmdBase)
+        sem <- 1
+        mutex.Lock()
+        queue.PushBack(r)
+        log.Debugf("PushBack r.off %d r.len %d sem len %d", r.Off, r.Len, len(sem))
+        mutex.Unlock()
+
+        go func(queue *list.List) {
+            var _r *nmp.ImageUploadReq
+            log.Debugf("Pop r.off %d r.len %d, tx queued %d", r.Off, r.Len, len(sem))
+            mutex.Lock()
+            if (queue.Len() > 0) {
+                ele := queue.Front()
+                queue.Remove(ele)
+	            _r = ele.Value.(*nmp.ImageUploadReq)
+                log.Debugf("_r.off %d _r.len %d", _r.Off, _r.Len)
+            }
+            mutex.Unlock()
+            log.Debugf("txReq _r.off %d _r.len %d", _r.Off, _r.Len)
+            rsp, err := txReq(s, _r.Msg(), &c.CmdBase)
             /* check for tx errors */
             if err != nil {
+                rt.PrintStack()
                 err_c <- err
+                assert = err_c
+                n := assert.(float64)
+                log.Debugf("tx error %v %v", err, n)
                 return
+            } else {
+                irsp := rsp.(*nmp.ImageUploadRsp)
+                log.Debugf("tx no error %v, offset %d", err, int(irsp.Off))
+                rsp_c <- rsp
             }
-
             irsp := rsp.(*nmp.ImageUploadRsp)
             res.Rsps = append(res.Rsps, irsp)
-				log.Debugf("resp returned (next) offset %d", off)
-            /* check for response errors */
-            if err != nil {
-                err_c <- err
-                return
-            }
+			log.Debugf("resp returned (next) offset %d", off)
+
             if c.ProgressCb != nil {
                 c.ProgressCb(c, irsp)
             }
-        }()
+        }(queue)
 
         //increment offset to previous + size of last
 		off = (int(r.Off) + len(r.Data))
 
-        select {
-        case e := <- err_c:
-            log.Debugf("Received error %v", e)
-            break
-        default:
-            log.Debugf("no error")
-        }
+//      go func() {
+            select {
+            case e := <- err_c:
+                log.Infof("Received error %v", e)
+                break
+            case rsp := <- rsp_c:
+                log.Info("Received response %v", rsp)
+                break
+            }
+            <-sem
+            log.Debugf("return processed, tx queue %d", len(sem))
+//      }()
+
 	}
 
 	return res, nil
