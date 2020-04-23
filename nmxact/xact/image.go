@@ -198,7 +198,7 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
     err_c := make(chan error, 1)
     defer close(rsp_c)
     defer close(err_c)
-    sem := make(chan int, 1)
+    sem := make(chan int, 3)
     queue := list.New()
     var mutex = &sync.Mutex{}
 
