@@ -85,6 +85,7 @@ func (s *BllSesn) setCln(c ble.Client) {
 }
 
 func (s *BllSesn) listenDisconnect() {
+    log.Debugf("In ListenDisconnect()")
 	go func() {
 		cln, err := s.getCln()
 		if err != nil {
