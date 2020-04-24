@@ -48,13 +48,12 @@ func txReq(s sesn.Sesn, m *nmp.NmpMsg, c *CmdBase) (
 
 	return rsp, nil
 }
-/* 
-func txReq_async(s sesn.Sesn, m *nmp.NmpMsg, c *CmdBase) (
-       nmp.NmpRsp, error) {
-        rsp_chan := make(chan nmp.Rsp)
+
+func txReq_async(s sesn.Sesn, m *nmp.NmpMsg, c *CmdBase, ch chan nmp.NmpRsp, e_c chan error) {
 
        if c.abortErr != nil {
-               return nil, c.abortErr
+               e_c <- c.abortErr
+               return
        }
 
        c.curNmpSeq = m.Hdr.Seq
@@ -64,10 +63,12 @@ func txReq_async(s sesn.Sesn, m *nmp.NmpMsg, c *CmdBase) (
                c.curSesn = nil
        }()
 
-       rsp, err := sesn.TxRxMgmt(s, m, c.TxOptions(), rsp_chan)
+       log.Debugf("txReq_async TxRxMgmt sesn %v seq %d", c.curSesn, c.curNmpSeq)
+       rsp, err := sesn.TxRxMgmt(s, m, c.TxOptions())
        if err != nil {
-               return nil, err
-       }
-
-       return rsp, nil
-} */
+               log.Debugf("**Error**: txReq_async TxRxMgmt sesn %v seq %d", c.curSesn, c.curNmpSeq)
+               e_c <- err
+       } else {
+          ch <- rsp
+      }
+}

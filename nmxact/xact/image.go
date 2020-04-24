@@ -194,11 +194,7 @@ func nextImageUploadReq(s sesn.Sesn, upgrade bool, data []byte, off int, imageNu
 
 func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
     res := newImageUploadResult()
-    rsp_c := make(chan nmp.NmpRsp, 1)
-    err_c := make(chan error, 1)
-    defer close(rsp_c)
-    defer close(err_c)
-    sem := make(chan int, 3)
+    sem := make(chan int, 2)
     queue := list.New()
     var mutex = &sync.Mutex{}
 
@@ -215,9 +211,16 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
         log.Debugf("PushBack r.off %d r.len %d sem len %d", r.Off, r.Len, len(sem))
         mutex.Unlock()
 
+        //increment offset to previous + size of last
+        off = (int(r.Off) + len(r.Data))
+
         go func() {
             var _r *nmp.ImageUploadReq
-            log.Debugf("Pop r.off %d r.len %d, tx queued %d", r.Off, r.Len, len(sem))
+            err_c := make(chan error, 1)
+            rsp_c := make(chan nmp.NmpRsp, 1)
+            defer close(err_c)
+            defer close(rsp_c)
+
             mutex.Lock()
             if (queue.Len() > 0) {
                 ele := queue.Front()
@@ -225,29 +228,30 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
 	            _r = ele.Value.(*nmp.ImageUploadReq)
                 log.Debugf("_r.off %d _r.len %d", _r.Off, _r.Len)
             }
-            log.Debugf("txReq _r.off %d _r.len %d", _r.Off, _r.Len)
-            rsp, err := txReq(s, _r.Msg(), &c.CmdBase)
+            txReq_async(s, _r.Msg(), &c.CmdBase, rsp_c, err_c)
 
-            if (err != nil) {
-                log.Debugf("txReq err %v", err)
-                return
-            } else {
-                log.Debugf("txReq no error %v", rsp)
-            }
+            for {
+                select {
+                    case err := <- err_c:
+                        log.Debugf("txReq err %v", err)
+                        <-sem
+                        mutex.Unlock()
+                        return
+                    case rsp := <- rsp_c:
+                        log.Debugf("txReq complete %v", rsp)
+                        irsp := rsp.(*nmp.ImageUploadRsp)
+                        res.Rsps = append(res.Rsps, irsp)
+			            log.Debugf("resp returned (next) offset %d", int(irsp.Off))
 
-            irsp := rsp.(*nmp.ImageUploadRsp)
-            res.Rsps = append(res.Rsps, irsp)
-			log.Debugf("resp returned (next) offset %d", off)
+                        if c.ProgressCb != nil {
+                            c.ProgressCb(c, irsp)
+                        }
+                        <-sem
+                        mutex.Unlock()
+               }
+           }
+       }()
 
-            if c.ProgressCb != nil {
-                c.ProgressCb(c, irsp)
-            }
-            <-sem
-            mutex.Unlock()
-        }()
-
-    //increment offset to previous + size of last
-     off = (int(r.Off) + len(r.Data))
 
 	}
 
