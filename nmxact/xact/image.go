@@ -194,7 +194,7 @@ func nextImageUploadReq(s sesn.Sesn, upgrade bool, data []byte, off int, imageNu
 
 func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
     res := newImageUploadResult()
-    sem := make(chan int, 2)
+    sem := make(chan int, 5)
     queue := list.New()
     var mutex = &sync.Mutex{}
 
@@ -208,7 +208,7 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
 			return nil, err
 		}
         queue.PushBack(r)
-        log.Debugf("PushBack r.off %d r.len %d sem len %d", r.Off, r.Len, len(sem))
+        log.Debugf("PushBack r.off %d r.len %d sem len %d", r.Off, len(r.Data), len(sem))
         mutex.Unlock()
 
         //increment offset to previous + size of last
@@ -226,7 +226,7 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
                 ele := queue.Front()
                 queue.Remove(ele)
 	            _r = ele.Value.(*nmp.ImageUploadReq)
-                log.Debugf("_r.off %d _r.len %d", _r.Off, _r.Len)
+                log.Debugf("_r.off %d _r.len %d", _r.Off, len(_r.Data))
             }
             txReq_async(s, _r.Msg(), &c.CmdBase, rsp_c, err_c)
 

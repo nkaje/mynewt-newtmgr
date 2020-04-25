@@ -69,6 +69,7 @@ func txReq_async(s sesn.Sesn, m *nmp.NmpMsg, c *CmdBase, ch chan nmp.NmpRsp, e_c
                log.Debugf("**Error**: txReq_async TxRxMgmt sesn %v seq %d", c.curSesn, c.curNmpSeq)
                e_c <- err
        } else {
+          log.Debugf("resp %v", rsp)
           ch <- rsp
       }
 }
