@@ -222,34 +222,39 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
             defer close(rsp_c)
 
             mutex.Lock()
-            if (queue.Len() > 0) {
+            l := queue.Len()
+            if (l > 0) {
                 ele := queue.Front()
                 queue.Remove(ele)
 	            _r = ele.Value.(*nmp.ImageUploadReq)
-                log.Debugf("_r.off %d _r.len %d", _r.Off, len(_r.Data))
+                //log.Debugf("_r.off %d _r.len %d", _r.Off, len(_r.Data))
+                txReq_async(s, _r.Msg(), &c.CmdBase, rsp_c, err_c)
+                log.Debugf("_r.off %d sent, sem %d, queue len", _r.Off, len(sem), queue.Len())
             }
-            txReq_async(s, _r.Msg(), &c.CmdBase, rsp_c, err_c)
+            mutex.Unlock()
 
-            for {
-                select {
+           func() {
+               for {
+                    log.Debugf("checking for response...")
+                    select {
                     case err := <- err_c:
                         log.Debugf("txReq err %v", err)
                         <-sem
-                        mutex.Unlock()
                         return
                     case rsp := <- rsp_c:
                         log.Debugf("txReq complete %v", rsp)
                         irsp := rsp.(*nmp.ImageUploadRsp)
                         res.Rsps = append(res.Rsps, irsp)
-			            log.Debugf("resp returned (next) offset %d", int(irsp.Off))
+                        log.Debugf("resp returned (next) offset %d", int(irsp.Off))
 
                         if c.ProgressCb != nil {
                             c.ProgressCb(c, irsp)
                         }
                         <-sem
-                        mutex.Unlock()
+                   }
+                    log.Debugf("checking for response...done")
                }
-           }
+           }()
        }()
 
 

@@ -110,6 +110,12 @@ func (s *BleSesn) TxRxMgmt(m *nmp.NmpMsg,
 	return s.Ns.TxRxMgmt(m, timeout)
 }
 
+func (s *BleSesn) TxRxMgmt_async(m *nmp.NmpMsg,
+	timeout time.Duration, ch chan nmp.NmpRsp, err chan error) (error) {
+
+	return s.Ns.TxRxMgmt_async(m, timeout, ch, err)
+}
+
 func (s *BleSesn) TxCoap(m coap.Message) error {
 	return s.Ns.TxCoap(m)
 }

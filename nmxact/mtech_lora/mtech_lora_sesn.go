@@ -316,6 +316,11 @@ func (s *LoraSesn) TxRxMgmt(m *nmp.NmpMsg,
 	return s.txvr.TxRxMgmt(txFunc, m, s.MtuOut(), timeout)
 }
 
+func (s *LoraSesn) TxRxMgmt_async(m *nmp.NmpMsg,
+    timeout time.Duration, ch chan nmp.NmpRsp, err_c chan error) (error) {
+    return nil
+}
+
 func (s *LoraSesn) AbortRx(seq uint8) error {
 	s.txvr.ErrorAll(fmt.Errorf("Rx aborted"))
 	return nil

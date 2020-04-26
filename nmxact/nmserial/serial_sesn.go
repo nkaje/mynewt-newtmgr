@@ -213,6 +213,11 @@ func (s *SerialSesn) TxRxMgmt(m *nmp.NmpMsg,
 	return s.txvr.TxRxMgmt(txFn, m, s.MtuOut(), timeout)
 }
 
+func (s *SerialSesn) TxRxMgmt_async(m *nmp.NmpMsg,
+    timeout time.Duration, ch chan nmp.NmpRsp, err_c chan error) (error) {
+    return nil
+}
+
 func (s *SerialSesn) TxCoap(m coap.Message) error {
 	if !s.isOpen {
 		return nmxutil.NewSesnClosedError(

@@ -27,6 +27,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmcoap"
 	"mynewt.apache.org/newtmgr/nmxact/nmp"
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
+    log "github.com/sirupsen/logrus"
 )
 
 // TxRxMgmt sends a management command (NMP / OMP) and listens for the
@@ -41,6 +42,22 @@ func TxRxMgmt(s Sesn, m *nmp.NmpMsg, o TxOptions) (nmp.NmpRsp, error) {
 
 		if !nmxutil.IsRspTimeout(err) || i >= retries {
 			return nil, err
+		}
+	}
+}
+
+func TxRxMgmt_async(s Sesn, m *nmp.NmpMsg, o TxOptions, ch chan nmp.NmpRsp, e_c chan error) error {
+    log.Debugf("TxRxMgmt_async in sesn_util.go")
+	retries := o.Tries - 1
+	for i := 0; ; i++ {
+		err := s.TxRxMgmt_async(m, o.Timeout, ch, e_c)
+		if err == nil {
+            log.Debugf("TxRxMgmt_async in sesn_util.goi returning nil")
+			return nil
+		}
+
+		if !nmxutil.IsRspTimeout(err) || i >= retries {
+			return err
 		}
 	}
 }

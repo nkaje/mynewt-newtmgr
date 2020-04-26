@@ -63,13 +63,11 @@ func txReq_async(s sesn.Sesn, m *nmp.NmpMsg, c *CmdBase, ch chan nmp.NmpRsp, e_c
                c.curSesn = nil
        }()
 
-       log.Debugf("txReq_async TxRxMgmt sesn %v seq %d", c.curSesn, c.curNmpSeq)
-       rsp, err := sesn.TxRxMgmt(s, m, c.TxOptions())
+       err := sesn.TxRxMgmt_async(s, m, c.TxOptions(), ch, e_c)
        if err != nil {
                log.Debugf("**Error**: txReq_async TxRxMgmt sesn %v seq %d", c.curSesn, c.curNmpSeq)
                e_c <- err
        } else {
-          log.Debugf("resp %v", rsp)
-          ch <- rsp
-      }
+           log.Debugf("txReq_async returned with no errors")
+       }
 }

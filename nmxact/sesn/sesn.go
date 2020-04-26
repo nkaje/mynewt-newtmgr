@@ -102,6 +102,7 @@ type Sesn interface {
 	//     * nmxutil.SesnClosedError: session not open.
 	//     * other error
 	TxRxMgmt(m *nmp.NmpMsg, timeout time.Duration) (nmp.NmpRsp, error)
+	TxRxMgmt_async(m *nmp.NmpMsg, timeout time.Duration, ch chan nmp.NmpRsp, err_c chan error) (error)
 
 	// Creates a listener for incoming CoAP messages matching the specified
 	// criteria.

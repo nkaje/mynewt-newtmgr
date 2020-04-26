@@ -351,6 +351,11 @@ func (s *NakedSesn) TxRxMgmt(m *nmp.NmpMsg,
 	return rsp, nil
 }
 
+func (s *NakedSesn) TxRxMgmt_async(m *nmp.NmpMsg,
+    timeout time.Duration, ch chan nmp.NmpRsp, err_c chan error) (error) {
+    return nil
+}
+
 func (s *NakedSesn) ListenCoap(
 	mc nmcoap.MsgCriteria) (*nmcoap.Listener, error) {
 
