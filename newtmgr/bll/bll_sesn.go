@@ -452,6 +452,7 @@ func (s *BllSesn) CoapIsTcp() bool {
 }
 
 func (s *BllSesn) Filters() (nmcoap.MsgFilter, nmcoap.MsgFilter) {
+    //rt.PrintStack()
 	return s.txvr.Filters()
 }
 

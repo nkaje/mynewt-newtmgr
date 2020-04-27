@@ -34,7 +34,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
 	"mynewt.apache.org/newtmgr/nmxact/omp"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
-    rt "runtime/debug"
+    //rt "runtime/debug"
 )
 
 type TxFn func(req []byte) error
@@ -248,25 +248,26 @@ func (t *Transceiver) txRxOmp_async(txCb TxFn, req *nmp.NmpMsg, mtu int,
     log.Debugf("txRxOmp_async txcb done")
 
 	// Now wait for NMP response.
-    for {
-            select {
-            case err := <-nl.ErrChan:
-                err_c <- err
-                log.Debugf("Error reported %v", err_c)
-                return nil
-            case rsp := <-nl.RspChan:
-                log.Debugf("response async %v", rsp)
-                rt.PrintStack()
-                ch <- rsp
-                return nil
-            case _, ok := <-nl.AfterTimeout(timeout):
-                if ok {
-                    err_c <- fmt.Errorf("Request timedout")
-                }
-                return nil
+    go func() {
+        for {
+                select {
+                case err := <-nl.ErrChan:
+                    err_c <- err
+                    log.Debugf("Error reported %v", err_c)
+                    return nil
+                case rsp := <-nl.RspChan:
+                    log.Debugf("response async %v", rsp)
+                    //rt.PrintStack()
+                    ch <- rsp
+                    return nil
+                case _, ok := <-nl.AfterTimeout(timeout):
+                    if ok {
+                        err_c <- fmt.Errorf("Request timedout")
+                    }
+                    return nil
+            }
         }
-    }
-
+    }()
 }
 
 

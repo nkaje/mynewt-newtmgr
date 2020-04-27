@@ -233,29 +233,27 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
             }
             mutex.Unlock()
 
-           func() {
-               for {
-                    log.Debugf("checking for response...")
-                    select {
-                    case err := <- err_c:
-                        log.Debugf("txReq err %v", err)
-                        <-sem
-                        return
-                    case rsp := <- rsp_c:
-                        log.Debugf("txReq complete %v", rsp)
-                        irsp := rsp.(*nmp.ImageUploadRsp)
-                        res.Rsps = append(res.Rsps, irsp)
-                        log.Debugf("resp returned (next) offset %d", int(irsp.Off))
+           for {
+                log.Debugf("checking for response...")
+                select {
+                case err := <- err_c:
+                    log.Debugf("txReq err %v", err)
+                    <-sem
+                    return
+                case rsp := <- rsp_c:
+                    log.Debugf("txReq complete %v", rsp)
+                    irsp := rsp.(*nmp.ImageUploadRsp)
+                    res.Rsps = append(res.Rsps, irsp)
+                    log.Debugf("resp returned (next) offset %d", int(irsp.Off))
 
-                        if c.ProgressCb != nil {
-                            c.ProgressCb(c, irsp)
-                        }
-                        <-sem
-                   }
-                    log.Debugf("checking for response...done")
+                    if c.ProgressCb != nil {
+                        c.ProgressCb(c, irsp)
+                    }
+                    <-sem
+                    return
                }
-           }()
-       }()
+            }
+        }()
 
 
 	}
