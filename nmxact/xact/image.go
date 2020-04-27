@@ -229,7 +229,7 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
 	            _r = ele.Value.(*nmp.ImageUploadReq)
                 //log.Debugf("_r.off %d _r.len %d", _r.Off, len(_r.Data))
                 txReq_async(s, _r.Msg(), &c.CmdBase, rsp_c, err_c)
-                log.Debugf("_r.off %d sent, sem %d, queue len", _r.Off, len(sem), queue.Len())
+                log.Debugf("_r.off %d sent, sem %d, queue len %d", _r.Off, len(sem), queue.Len())
             }
             mutex.Unlock()
 

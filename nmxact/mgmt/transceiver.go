@@ -217,7 +217,6 @@ func (t *Transceiver) txRxOmp_async(txCb TxFn, req *nmp.NmpMsg, mtu int,
 	if err != nil {
         err_c <- err
 	}
-	defer t.od.RemoveNmpListener(req.Hdr.Seq)
 
 	var b []byte
 	if t.isTcp {
@@ -249,25 +248,27 @@ func (t *Transceiver) txRxOmp_async(txCb TxFn, req *nmp.NmpMsg, mtu int,
 
 	// Now wait for NMP response.
     go func() {
+	    defer t.od.RemoveNmpListener(req.Hdr.Seq)
         for {
                 select {
                 case err := <-nl.ErrChan:
                     err_c <- err
                     log.Debugf("Error reported %v", err_c)
-                    return nil
+                    return
                 case rsp := <-nl.RspChan:
                     log.Debugf("response async %v", rsp)
                     //rt.PrintStack()
                     ch <- rsp
-                    return nil
+                    return
                 case _, ok := <-nl.AfterTimeout(timeout):
                     if ok {
                         err_c <- fmt.Errorf("Request timedout")
                     }
-                    return nil
+                    return
             }
         }
     }()
+    return nil
 }
 
 
