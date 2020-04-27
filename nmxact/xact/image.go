@@ -30,7 +30,7 @@ import (
 	"mynewt.apache.org/newtmgr/nmxact/nmxutil"
 	"mynewt.apache.org/newtmgr/nmxact/sesn"
 	log "github.com/sirupsen/logrus"
-    "container/list"
+    //"container/list"
     "sync"
 //    "time"
 //    rt "runtime/debug"
@@ -194,46 +194,29 @@ func nextImageUploadReq(s sesn.Sesn, upgrade bool, data []byte, off int, imageNu
 
 func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
     res := newImageUploadResult()
-    sem := make(chan int, 5)
-    queue := list.New()
-    var mutex = &sync.Mutex{}
+    sem := make(chan int, 1)
+    rsp_c := make(chan nmp.NmpRsp, 1)
+    err_c := make(chan error, 1)
+    var wg sync.WaitGroup
 
 
 	for off := c.StartOff; off < len(c.Data); {
-        sem <- 1
-        mutex.Lock()
+        sem<-1
 		r, err := nextImageUploadReq(s, c.Upgrade, c.Data, off, c.ImageNum)
 		if err != nil {
-            mutex.Unlock()
 			return nil, err
 		}
-        queue.PushBack(r)
-        log.Debugf("PushBack r.off %d r.len %d sem len %d", r.Off, len(r.Data), len(sem))
-        mutex.Unlock()
 
         //increment offset to previous + size of last
         off = (int(r.Off) + len(r.Data))
 
+        txReq_async(s, r.Msg(), &c.CmdBase, rsp_c, err_c)
+        log.Debugf("_r.off %d sent, sem %d, queue", r.Off, len(sem))
+
+        wg.Add(1)
         go func() {
-            var _r *nmp.ImageUploadReq
-            err_c := make(chan error, 1)
-            rsp_c := make(chan nmp.NmpRsp, 1)
-            defer close(err_c)
-            defer close(rsp_c)
-
-            mutex.Lock()
-            l := queue.Len()
-            if (l > 0) {
-                ele := queue.Front()
-                queue.Remove(ele)
-	            _r = ele.Value.(*nmp.ImageUploadReq)
-                //log.Debugf("_r.off %d _r.len %d", _r.Off, len(_r.Data))
-                txReq_async(s, _r.Msg(), &c.CmdBase, rsp_c, err_c)
-                log.Debugf("_r.off %d sent, sem %d, queue len %d", _r.Off, len(sem), queue.Len())
-            }
-            mutex.Unlock()
-
-           for {
+            for {
+                defer wg.Done()
                 log.Debugf("checking for response...")
                 select {
                 case err := <- err_c:
@@ -254,10 +237,9 @@ func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
                }
             }
         }()
+     }
 
-
-	}
-
+    wg.Wait()
 	return res, nil
 }
 
