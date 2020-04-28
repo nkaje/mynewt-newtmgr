@@ -194,13 +194,27 @@ func nextImageUploadReq(s sesn.Sesn, upgrade bool, data []byte, off int, imageNu
 
 func (c *ImageUploadCmd) Run(s sesn.Sesn) (Result, error) {
     res := newImageUploadResult()
-    sem := make(chan int, 1)
+    sem := make(chan int, 3)
     rsp_c := make(chan nmp.NmpRsp, 1)
     err_c := make(chan error, 1)
     var wg sync.WaitGroup
 
+    /* 1st chunk */
+    off := c.StartOff
+    fr, err:= nextImageUploadReq(s, c.Upgrade, c.Data, off, c.ImageNum)
+    if err != nil {
+        return nil, err
+    }
 
-	for off := c.StartOff; off < len(c.Data); {
+    rsp, err := txReq(s, fr.Msg(), &c.CmdBase)
+    irsp := rsp.(*nmp.ImageUploadRsp)
+    res.Rsps = append(res.Rsps, irsp)
+    log.Debugf("resp first returned (next) offset %d", int(irsp.Off))
+    if c.ProgressCb != nil {
+        c.ProgressCb(c, irsp)
+    }
+
+	for off := int(irsp.Off); off < len(c.Data); {
         sem<-1
 		r, err := nextImageUploadReq(s, c.Upgrade, c.Data, off, c.ImageNum)
 		if err != nil {

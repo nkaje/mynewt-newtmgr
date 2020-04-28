@@ -253,7 +253,7 @@ func (t *Transceiver) txRxOmp_async(txCb TxFn, req *nmp.NmpMsg, mtu int,
                 select {
                 case err := <-nl.ErrChan:
                     err_c <- err
-                    log.Debugf("Error reported %v", err_c)
+                    log.Debugf("Error reported %v", err)
                     return
                 case rsp := <-nl.RspChan:
                     log.Debugf("response async %v", rsp)
